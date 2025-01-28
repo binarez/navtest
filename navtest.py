@@ -1,4 +1,5 @@
-from typing import List
+from typing import List, Tuple
+from matplotlib.widgets import TextBox
 import numpy as np
 from dataclasses import dataclass
 import matplotlib.pyplot as plt
@@ -21,7 +22,7 @@ class Arete:
 
 def main():
     # Obtenir les noeuds du terrain
-    noeuds = ObtenirGraphTerrain()
+    partie, noeuds = ObtenirGraphTerrain()
 
     # Créer un graphique NetworkX
     G = nx.Graph()
@@ -54,17 +55,10 @@ def main():
     for arete in aretes:
         G.add_edge(arete.de, arete.vers, weight=np.linalg.norm(noeudsGraph[arete.de] - noeudsGraph[arete.vers]))
 
-    # Générer des chemins de démonstration
-    demoChemins =   [
-        nx.dijkstra_path(G, "station1", "station2"),
-        nx.dijkstra_path(G, "station1", "processor"),
-        nx.dijkstra_path(G, "station2", "reef6")
-                    ]
-    
     # Afficher!
-    dessiner_graph(G, demoChemins)
+    dessiner_graph(G, partie)
 
-def ObtenirGraphTerrain() -> List[Noeud]:
+def ObtenirGraphTerrain() -> Tuple[str, List[Noeud]]:
     noeuds_gauche = [
         Noeud("station1",    np.array([657.37,  25.80, 58.50]), np.array([0.0,   0.0, 126.0])),
         Noeud("station2",    np.array([657.37, 291.20, 58.50]), np.array([0.0,   0.0, 234.0])),
@@ -99,13 +93,14 @@ def ObtenirGraphTerrain() -> List[Noeud]:
         choix = "g"  # Debug
         # choix = input("Champ de (g)auche ou (d)roite? ")
         if( choix == "g" ):
-            return noeuds_gauche
+            return choix, noeuds_gauche
         elif( choix == "d" ):
-            return noeuds_droite
+            return choix, noeuds_droite
 
-def dessiner_graph(G : nx.Graph, chemins : List[str] = []):
+def dessiner_graph(G : nx.Graph, partie : str):
     fig = plt.figure(figsize=(12,10))
     render = fig.add_subplot(111, projection="3d")
+    cheminCourant = []
 
     def mise_a_jour_anim(frameIndex : int):
         # Réinitialiser le graphique
@@ -117,7 +112,7 @@ def dessiner_graph(G : nx.Graph, chemins : List[str] = []):
         render.set_xlim([0, TAILLE_TERRAIN[0]])
         render.set_ylim([0, TAILLE_TERRAIN[1]])
         render.set_zlim([0, TAILLE_TERRAIN[2]])
-        render.set_title('Terrain')
+        render.set_title('Terrain ' + ('gauche' if partie == 'g' else 'droite'))
         render.set_box_aspect(TAILLE_TERRAIN)
 
         # Dessiner les noeuds
@@ -135,12 +130,12 @@ def dessiner_graph(G : nx.Graph, chemins : List[str] = []):
             z_coords = [noeudDepart[2], noeudArrivee[2]]
             render.plot(x_coords, y_coords, z_coords, color="green", linewidth=1, alpha=0.6)
 
-        # Dessiner les chemins
-        for chemin in chemins:
+        # Dessiner le chemin, s'il y a lieu de le faire
+        if len(cheminCourant) > 0:
             # Pour chacune des aretes du chemin
-            for i in range(len(chemin)-1):
-                noeudDepart = noeuds[chemin[i]]
-                noeudArrivee = noeuds[chemin[i + 1]]
+            for i in range(len(cheminCourant)-1):
+                noeudDepart = noeuds[cheminCourant[i]]
+                noeudArrivee = noeuds[cheminCourant[i + 1]]
                 x_coords = [noeudDepart[0], noeudArrivee[0]]
                 y_coords = [noeudDepart[1], noeudArrivee[1]]
                 z_coords = [noeudDepart[2], noeudArrivee[2]]
@@ -157,6 +152,23 @@ def dessiner_graph(G : nx.Graph, chemins : List[str] = []):
         cache_frame_data=False,
         frames=100)
     
+    # Interface graphique
+    txtBox1 = TextBox(plt.axes([0.1, 0.01, 0.3, 0.05]), 'Noeud départ', "station1")
+    txtBox2 = TextBox(plt.axes([0.5, 0.01, 0.3, 0.05]), 'Noeud arrivée', "reef5")
+    def cheminMaJ(text):
+        noeudDepart = txtBox1.text
+        noeudArrivee = txtBox2.text
+        try:
+            nonlocal cheminCourant
+            cheminCourant = nx.dijkstra_path(G, noeudDepart, noeudArrivee)
+            mise_a_jour_anim(0)  # Update the plot with the new path
+        except nx.NetworkXNoPath:
+            print(f"No path between {noeudDepart} and {noeudArrivee}")
+
+    txtBox1.on_submit(cheminMaJ)
+    txtBox2.on_submit(cheminMaJ)
+    cheminMaJ("") # Force la mise à jour
+
     # Affichage
     plt.show()
 
