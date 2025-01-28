@@ -15,10 +15,19 @@ class Noeud:
     rotation: np.ndarray  # [rot_x, rot_y, rot_z]
 
 def main():
-    G = nx.Graph()
+    # Obtenir les noeuds du terrain
     noeuds = ObtenirGraphTerrain()
+
+    # Créer un graphique NetworkX
+    G = nx.Graph()
     for noeud in noeuds:
         G.add_node(noeud.nom, pos=noeud.position)
+
+    # Ajouter les arêtes
+    for iStation in range(1,3):
+        for iReef in range(1,7):
+            G.add_edge("station"+str(iStation), "reef"+str(iReef))
+    
     dessiner_graph(G)
 
 def ObtenirGraphTerrain() -> List[Noeud]:
@@ -49,54 +58,64 @@ def ObtenirGraphTerrain() -> List[Noeud]:
         Noeud("reef6",       np.array([193.10, 130.17, 12.13]), np.array([0.0,   0.0, 300.0])),
     ]
     while True:
-        choix = input("Champ de (g)auche ou (d)roite? ")
+        choix = "g"  # Debug
+        #choix = input("Champ de (g)auche ou (d)roite? ")
         if( choix == "g" ):
             return noeuds_gauche
         elif( choix == "d" ):
             return noeuds_droite
 
 def dessiner_graph(G : nx.Graph):
-    fig = plt.figure(figsize=(8, 6))
-    ax = fig.add_subplot(111, projection='3d')
-    for nom, (x, y, z) in nx.get_node_attributes(G, 'pos').items():
-        ax.scatter(x, y, z, color='blue', s=40)
-        ax.text(x, y, z, nom, color='red', fontsize=8)
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.set_title('Terrain')
-    plt.tight_layout()
-    plt.show()
+    chemins = nx.generate_random_paths(G, 1, 3) # TODO: Trouver les chemins
 
-# fig = plt.figure()
-# ax = fig.add_subplot(111, projection="3d")
-# ax.grid(False)
-# ax.set_axis_off()
-# plt.tight_layout()
-# noeud = [0]
-# ani = animation.FuncAnimation(
-#     fig,
-#     mise_a_jour_anim,
-#     interval=50,
-#     cache_frame_data=False,
-#     frames=100,
-# )
-# # plt.show()
-# def mise_a_jour_anim(index):
-#     ax.clear()
-#     ax.scatter(*noeuds.T, alpha=0.2, s=100, color="blue")
-#     for vizedge in edges:
-#         ax.plot(*vizedge.T, color="gray")
-#     neighbors = list(G.neighbors(noeud[0]))
-#     if index % 5 == 0:
-#         noeud[0] = random.choice(neighbors)
-#     noeud0 = noeuds[noeud[0]]
-#     ax.scatter(*noeud0, alpha=1, marker="s", color="red", s=100)
-#     ax.view_init(index * 0.2, index * 0.5)
-#     ax.grid(False)
-#     # ax.set_axis_off()
-#     plt.tight_layout()
-#     return
+    fig = plt.figure()
+    render = fig.add_subplot(111, projection="3d")
+
+    def mise_a_jour_anim(frameIndex : int):
+        # Réinitialiser le graphique
+        render.clear()
+        render.grid(True)
+        render.set_xlabel('X')
+        render.set_ylabel('Y')
+        render.set_zlabel('Z')
+        render.set_title('Terrain')
+
+        # Dessiner les noeuds
+        noeuds = nx.get_node_attributes(G, 'pos')
+        for nom, (x, y, z) in noeuds.items():
+            render.scatter(x, y, z, color='blue', s=40)
+            render.text(x, y, z, nom, color='red', fontsize=8)
+
+        # Dessiner les arêtes
+        for depart, arrivee in G.edges:
+            noeudDepart = noeuds[depart]
+            noeudArrivee = noeuds[arrivee]
+            x_coords = [noeudDepart[0], noeudArrivee[0]]
+            y_coords = [noeudDepart[1], noeudArrivee[1]]
+            z_coords = [noeudDepart[2], noeudArrivee[2]]
+            render.plot(x_coords, y_coords, z_coords, color="green", linewidth=1, alpha=0.5)
+
+        # # Dessiner les chemins
+        # for index, chemin in enumerate(chemins):
+        #     for i in range(len(chemin)-1):
+        #         render.plot([chemin[i][0], chemin[i+1][0]],
+        #                     [chemin[i][1], chemin[i+1][1]],
+        #                     [chemin[i][2], chemin[i+1][2]],
+        #                     color="red")
+
+        # Terminé!
+        return render
+
+    # Plotlib animation
+    anim = animation.FuncAnimation(
+        fig,
+        mise_a_jour_anim,
+        interval=50,
+        cache_frame_data=False,
+        frames=100)
+    
+    # Affichage
+    plt.show()
 
 # C'est parti!
 main()
