@@ -6,7 +6,7 @@ from matplotlib import animation
 import networkx as nx
 
 # Je ne trouve pas les dimensions??
-TAILLE_TERRAIN = np.array([1000, 1000])
+TAILLE_TERRAIN = np.array([1000, 350, 100])
 
 @dataclass
 class Noeud:
@@ -28,7 +28,10 @@ def main():
         for iReef in range(1,7):
             G.add_edge("station"+str(iStation), "reef"+str(iReef))
     
-    dessiner_graph(G)
+    demoChemins = [ nx.dijkstra_path(G, "station1", "station2"),
+                    nx.dijkstra_path(G, "station2", "reef6") ]
+    
+    dessiner_graph(G, demoChemins)
 
 def ObtenirGraphTerrain() -> List[Noeud]:
     noeuds_gauche = [
@@ -65,10 +68,8 @@ def ObtenirGraphTerrain() -> List[Noeud]:
         elif( choix == "d" ):
             return noeuds_droite
 
-def dessiner_graph(G : nx.Graph):
-    chemins = nx.generate_random_paths(G, 1, 3) # TODO: Trouver les chemins
-
-    fig = plt.figure()
+def dessiner_graph(G : nx.Graph, chemins : List[str] = []):
+    fig = plt.figure(figsize=(12,10))
     render = fig.add_subplot(111, projection="3d")
 
     def mise_a_jour_anim(frameIndex : int):
@@ -78,6 +79,9 @@ def dessiner_graph(G : nx.Graph):
         render.set_xlabel('X')
         render.set_ylabel('Y')
         render.set_zlabel('Z')
+        render.set_xlim([0, TAILLE_TERRAIN[0]])
+        render.set_ylim([0, TAILLE_TERRAIN[1]])
+        render.set_zlim([0, TAILLE_TERRAIN[2]])
         render.set_title('Terrain')
 
         # Dessiner les noeuds
@@ -93,15 +97,18 @@ def dessiner_graph(G : nx.Graph):
             x_coords = [noeudDepart[0], noeudArrivee[0]]
             y_coords = [noeudDepart[1], noeudArrivee[1]]
             z_coords = [noeudDepart[2], noeudArrivee[2]]
-            render.plot(x_coords, y_coords, z_coords, color="green", linewidth=1, alpha=0.5)
+            render.plot(x_coords, y_coords, z_coords, color="green", linewidth=1, alpha=0.6)
 
-        # # Dessiner les chemins
-        # for index, chemin in enumerate(chemins):
-        #     for i in range(len(chemin)-1):
-        #         render.plot([chemin[i][0], chemin[i+1][0]],
-        #                     [chemin[i][1], chemin[i+1][1]],
-        #                     [chemin[i][2], chemin[i+1][2]],
-        #                     color="red")
+        # Dessiner les chemins
+        for chemin in chemins:
+            # Pour chacune des aretes du chemin
+            for i in range(len(chemin)-1):
+                noeudDepart = noeuds[chemin[i]]
+                noeudArrivee = noeuds[chemin[i + 1]]
+                x_coords = [noeudDepart[0], noeudArrivee[0]]
+                y_coords = [noeudDepart[1], noeudArrivee[1]]
+                z_coords = [noeudDepart[2], noeudArrivee[2]]
+                render.plot(x_coords, y_coords, z_coords, color="red", linewidth=2)
 
         # Terminé!
         return render
