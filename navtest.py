@@ -26,7 +26,9 @@ def main():
     # Ajouter les arêtes
     for iStation in range(1,3):
         for iReef in range(1,7):
-            G.add_edge("station"+str(iStation), "reef"+str(iReef))
+            posStation = noeuds[iStation].position
+            posReef = noeuds[iReef+2].position
+            G.add_edge("station"+str(iStation), "reef"+str(iReef), weight=np.linalg.norm(posStation - posReef))
     
     demoChemins = [ nx.dijkstra_path(G, "station1", "station2"),
                     nx.dijkstra_path(G, "station2", "reef6") ]
@@ -61,8 +63,8 @@ def ObtenirGraphTerrain() -> List[Noeud]:
         Noeud("reef6",       np.array([193.10, 130.17, 12.13]), np.array([0.0,   0.0, 300.0])),
     ]
     while True:
-        choix = "g"  # Debug
-        #choix = input("Champ de (g)auche ou (d)roite? ")
+        # choix = "g"  # Debug
+        choix = input("Champ de (g)auche ou (d)roite? ")
         if( choix == "g" ):
             return noeuds_gauche
         elif( choix == "d" ):
