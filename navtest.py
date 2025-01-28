@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib import animation
 import networkx as nx
 
-# Je ne trouve pas les dimensions??
+# TODO Je ne trouve pas les vraies dimensions??
 TAILLE_TERRAIN = np.array([1000, 350, 100])
 
 @dataclass
@@ -13,6 +13,11 @@ class Noeud:
     nom: str
     position: np.ndarray  # [x, y, z]
     rotation: np.ndarray  # [rot_x, rot_y, rot_z]
+
+@dataclass
+class Arete:
+    de: str
+    vers: str
 
 def main():
     # Obtenir les noeuds du terrain
@@ -24,15 +29,39 @@ def main():
         G.add_node(noeud.nom, pos=noeud.position)
 
     # Ajouter les arêtes
-    for iStation in range(1,3):
-        for iReef in range(1,7):
-            posStation = noeuds[iStation].position
-            posReef = noeuds[iReef+2].position
-            G.add_edge("station"+str(iStation), "reef"+str(iReef), weight=np.linalg.norm(posStation - posReef))
+    aretes = [
+        # Des stations vers les transits
+        Arete("station1", "transitS"),
+        Arete("station1", "transitE"),
+        Arete("station2", "transitN"),
+        Arete("station2", "transitE"),
+        # Des transits vers les autres transits
+        Arete("transitN", "transitE"),
+        Arete("transitN", "transitW"),
+        Arete("transitS", "transitE"),
+        Arete("transitS", "transitW"),
+        # Des transits vers les récifs
+        Arete("transitS", "reef1"),
+        Arete("transitS", "reef6"),
+        Arete("transitN", "reef3"),
+        Arete("transitN", "reef4"),
+        Arete("transitE", "reef2"),
+        Arete("transitW", "reef5"),
+        # Vers le processeur
+        Arete("transitN", "processor")
+            ]
+    noeudsGraph = nx.get_node_attributes(G, 'pos')
+    for arete in aretes:
+        G.add_edge(arete.de, arete.vers, weight=np.linalg.norm(noeudsGraph[arete.de] - noeudsGraph[arete.vers]))
+
+    # Générer des chemins de démonstration
+    demoChemins =   [
+        nx.dijkstra_path(G, "station1", "station2"),
+        nx.dijkstra_path(G, "station1", "processor"),
+        nx.dijkstra_path(G, "station2", "reef6")
+                    ]
     
-    demoChemins = [ nx.dijkstra_path(G, "station1", "station2"),
-                    nx.dijkstra_path(G, "station2", "reef6") ]
-    
+    # Afficher!
     dessiner_graph(G, demoChemins)
 
 def ObtenirGraphTerrain() -> List[Noeud]:
@@ -47,7 +76,11 @@ def ObtenirGraphTerrain() -> List[Noeud]:
         Noeud("reef3",       np.array([530.49, 186.83, 12.13]), np.array([0.0,   0.0,  60.0])),
         Noeud("reef4",       np.array([497.77, 186.83, 12.13]), np.array([0.0,   0.0, 120.0])),
         Noeud("reef5",       np.array([481.39, 158.50, 12.13]), np.array([0.0,   0.0, 180.0])),
-        Noeud("reef6",       np.array([497.77, 130.17, 12.13]), np.array([0.0,   0.0, 240.0]))
+        Noeud("reef6",       np.array([497.77, 130.17, 12.13]), np.array([0.0,   0.0, 240.0])),
+        Noeud("transitN",    np.array([515, 225, 1]),  np.array([0,0,0])),
+        Noeud("transitS",    np.array([515, 75, 1]),  np.array([0,0,0])),
+        Noeud("transitE",    np.array([625, 158, 1]),  np.array([0,0,0])),
+        Noeud("transitW",    np.array([425, 158, 1]),  np.array([0,0,0])),
     ]
     noeuds_droite = [
         Noeud("station1",    np.array([ 33.51,  25.80, 58.50]), np.array([0.0,   0.0,  54.0])),
@@ -63,8 +96,8 @@ def ObtenirGraphTerrain() -> List[Noeud]:
         Noeud("reef6",       np.array([193.10, 130.17, 12.13]), np.array([0.0,   0.0, 300.0])),
     ]
     while True:
-        # choix = "g"  # Debug
-        choix = input("Champ de (g)auche ou (d)roite? ")
+        choix = "g"  # Debug
+        # choix = input("Champ de (g)auche ou (d)roite? ")
         if( choix == "g" ):
             return noeuds_gauche
         elif( choix == "d" ):
@@ -85,6 +118,7 @@ def dessiner_graph(G : nx.Graph, chemins : List[str] = []):
         render.set_ylim([0, TAILLE_TERRAIN[1]])
         render.set_zlim([0, TAILLE_TERRAIN[2]])
         render.set_title('Terrain')
+        render.set_box_aspect(TAILLE_TERRAIN)
 
         # Dessiner les noeuds
         noeuds = nx.get_node_attributes(G, 'pos')
